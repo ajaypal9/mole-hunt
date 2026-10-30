@@ -6,7 +6,8 @@
 <meta name="theme-color" content="#120e0b">
 <title>Mole Hunt</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Caveat:wght@600;700&family=Special+Elite&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Caveat:wght@600;700&family=Special+Elite&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Caveat:wght@600;700&family=Special+Elite&display=swap"></noscript>
 <style>
   :root {
     --desk:#120e0b; --desk2:#1e1812; --paper:#eadbb8; --paper2:#dccb9f; --manila:#d8bd84; --ink:#2a2118; --inkl:#5a4a36;
@@ -169,7 +170,7 @@
   .coach em { font-style:normal; background:rgba(179,32,42,.15); padding:0 4px; font-weight:700; }
   .helpbtn { position:fixed; left:10px; bottom:10px; z-index:40; background:var(--brass); color:#2a1d00; border:0; border-radius:20px; padding:7px 14px; font:400 16px var(--disp); letter-spacing:1.5px; box-shadow:0 4px 0 #6e5013; }
   .modal { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.8); display:grid; place-items:center; padding:16px; }
-  .modal .paper { width:100%; max-width:470px; margin:0; max-height:92vh; overflow:auto; }
+  .modal .paper { width:100%; max-width:470px; margin:0; max-height:92vh; overflow:auto; animation:none; }
   .slide { display:none; } .slide.on { display:block; }
   .slide .big { font-size:54px; text-align:center; margin:2px 0 6px; }
   .slide p { font-size:15.5px; line-height:1.5; margin:8px 0; }
@@ -534,7 +535,7 @@ $('helpbtn').onclick = openHelp;
 $('mprev').onclick = () => { mi = Math.max(0, mi - 1); showSlide(); };
 $('mnext').onclick = () => { if (mi >= slides.length - 1) closeHelp(); else { mi++; showSlide(); } };
 $('modal').onclick = e => { if (e.target === $('modal')) closeHelp(); };
-try { if (!localStorage.getItem('mh_seen')) setTimeout(openHelp, 600); } catch { setTimeout(openHelp, 600); }
+try { if (!localStorage.getItem('mh_seen')) openHelp(); } catch { openHelp(); }
 
 setInterval(() => {
   if (!S || !TOTALS[S.phase]) return;
