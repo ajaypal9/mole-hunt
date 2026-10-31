@@ -223,6 +223,7 @@
       </div>
     </div>
     <p class="err" id="err"></p>
+    <p class="small hidden" id="status" style="text-align:center">Connecting…</p>
   </div>
   <div class="paper">
     <h3>FIELD MANUAL <span class="small" style="font-family:var(--type);letter-spacing:0">· 3–8 agents</span></h3>
@@ -234,6 +235,7 @@
   </div>
 </section>
 
+<div id="recon" class="hidden" style="position:fixed;top:0;left:0;right:0;z-index:70;background:var(--red);color:#fff;text-align:center;padding:9px;font:400 18px var(--disp);letter-spacing:2px">CONNECTION LOST · RECONNECTING…</div>
 <section id="app" class="wrap hidden">
   <div class="strip">
     <div id="caseline"></div>
@@ -251,6 +253,8 @@
       <div class="badges" id="lobbyplayers"></div>
     </div>
     <button class="btn brass block" id="start"></button>
+    <button class="btn alt block hidden" id="practice" style="margin-top:12px">🤖 PRACTICE WITH BOTS (SOLO)</button>
+    <div class="row hidden" id="botrow" style="margin-top:10px"><button class="btn alt sm" id="addbot" style="flex:1">+ ADD A BOT</button><button class="btn alt sm" id="clearbots" style="flex:1">REMOVE BOTS</button></div>
     <p class="dim center" id="lobbywait"></p>
   </div>
 
@@ -349,19 +353,40 @@ const sfx = { ding: () => { tone(880, .25, 'sine', .09); setTimeout(() => tone(1
               lose: () => [330, 262, 196].forEach((f, i) => setTimeout(() => tone(f, .35, 'sawtooth', .07), i * 160)) };
 $('mute').onclick = () => { soundOn = !soundOn; $('mute').textContent = soundOn ? '🔊 sound on' : '🔇 sound off'; A(); };
 
+let session = null, retries = 0, reconTimer = 0, connecting = false;
+try { session = JSON.parse(sessionStorage.getItem('mh_session') || 'null'); } catch {}
+const saveSession = () => { try { session ? sessionStorage.setItem('mh_session', JSON.stringify(session)) : sessionStorage.removeItem('mh_session'); } catch {} };
+function setBusy(on, text) { connecting = on; ['create', 'join'].forEach(id => { $(id).disabled = on; }); if (on) { $('err').textContent = ''; $('status').textContent = text || 'Connecting…'; } else $('status').textContent = ''; $('status').classList.toggle('hidden', !on); }
 function connect(first) {
   A();
+  clearTimeout(reconTimer);
+  try { if (ws) { ws.onclose = null; ws.close(); } } catch {}
+  const mine = first.type === 'rejoin';
+  if (!mine) setBusy(true, 'Connecting… (the server may take up to a minute to wake up)');
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`);
-  ws.onopen = () => ws.send(JSON.stringify(first));
+  const sock = ws;
+  ws.onopen = () => sock.send(JSON.stringify(first));
   ws.onmessage = e => {
     const m = JSON.parse(e.data);
-    if (m.type === 'error') { $('err').textContent = m.message; ws.close(); }
-    else if (m.type === 'joined') { myId = m.id; $('home').classList.add('hidden'); $('app').classList.remove('hidden'); window.scrollTo(0, 0); }
+    if (m.type === 'error') {
+      if (m.message === 'expired') { session = null; saveSession(); myId = null; setBusy(false); $('home').classList.remove('hidden'); $('app').classList.add('hidden'); $('recon').classList.add('hidden'); $('err').textContent = 'That game has ended. Start or join a new one.'; }
+      else { setBusy(false); $('err').textContent = m.message; }
+      sock.onclose = null; sock.close();
+    }
+    else if (m.type === 'joined') { myId = m.id; retries = 0; session = { code: m.code, id: m.id, token: m.token }; saveSession(); setBusy(false); $('recon').classList.add('hidden'); $('home').classList.add('hidden'); $('app').classList.remove('hidden'); if (!mine) window.scrollTo(0, 0); }
     else if (m.type === 'state') { S = m; render(); }
     else if (m.type === 'chat') addChat(m);
   };
-  ws.onclose = () => { if (myId) addChat({ system: true, text: 'Connection lost. Reload to rejoin.', cls: 'close' }); };
+  ws.onclose = () => {
+    if (sock !== ws) return;
+    if (myId && session) {
+      $('recon').classList.remove('hidden');
+      if (retries++ < 40) reconTimer = setTimeout(() => connect({ type: 'rejoin', code: session.code, id: session.id, token: session.token }), Math.min(4000, 800 + retries * 400));
+      else { $('recon').textContent = 'Connection lost. Reload the page to try again.'; }
+    } else if (!myId) { setBusy(false); $('err').textContent = 'Could not reach the server. It may be waking up, so try again in a few seconds.'; }
+  };
 }
+if (session) { setBusy(true, 'Rejoining your game…'); myId = session.id; connect({ type: 'rejoin', code: session.code, id: session.id, token: session.token }); }
 const out = o => ws && ws.readyState === 1 && ws.send(JSON.stringify(o));
 const nm = () => $('name').value.trim() || 'Agent';
 $('create').onclick = () => { $('err').textContent = ''; connect({ type: 'create', name: nm() }); };
@@ -369,6 +394,9 @@ $('showjoin').onclick = () => $('joinbox').classList.toggle('hidden');
 $('join').onclick = () => { $('err').textContent = ''; connect({ type: 'join', name: nm(), code: $('code').value }); };
 $('code').onkeydown = e => { if (e.key === 'Enter') $('join').click(); };
 $('start').onclick = () => out({ type: 'start' });
+$('practice').onclick = () => out({ type: 'practice' });
+$('addbot').onclick = () => out({ type: 'addbot' });
+$('clearbots').onclick = () => out({ type: 'clearbots' });
 $('again').onclick = () => out({ type: 'lobby' });
 $('ready').onclick = () => { sfx.tick(); out({ type: 'ready' }); };
 $('eyebtn').onclick = () => { showWord = !showWord; render(); };
@@ -412,7 +440,11 @@ function render() {
   $('tfill').style.width = TOTALS[ph] ? (s.timeLeft / TOTALS[ph] * 100) + '%' : '0';
 
   $('bigcode').textContent = s.code; $('origin').textContent = location.origin;
-  $('lobbyplayers').innerHTML = s.players.map((p, i) => `<div class="idcard" style="--r:${rot(i)}deg"><div class="ph" style="background:${esc(p.color)}">${ini(p)}</div><div class="nm">${esc(p.name)}${p.id === s.hostId ? ' ★' : ''}</div></div>`).join('');
+  $('lobbyplayers').innerHTML = s.players.map((p, i) => `<div class="idcard" style="--r:${rot(i)}deg;${p.away ? 'opacity:.45' : ''}"><div class="ph" style="background:${esc(p.color)}">${p.bot ? '🤖' : ini(p)}</div><div class="nm">${esc(p.name)}${p.id === s.hostId ? ' ★' : ''}${p.away ? ' (away)' : ''}</div></div>`).join('');
+  const hasBots = s.players.some(p => p.bot);
+  $('practice').classList.toggle('hidden', !(host && ph === 'lobby' && s.players.length < 4));
+  $('botrow').classList.toggle('hidden', !(host && ph === 'lobby' && (hasBots || s.players.length < 8)));
+  $('addbot').classList.toggle('hidden', s.players.length >= 8); $('clearbots').classList.toggle('hidden', !hasBots);
   $('start').classList.toggle('hidden', !host);
   $('start').disabled = s.players.length < 3;
   $('start').textContent = s.players.length < 3 ? `NEED ${3 - s.players.length} MORE AGENT${3 - s.players.length > 1 ? 'S' : ''}…` : `BEGIN OPERATION · ${s.players.length} AGENTS`;
@@ -493,7 +525,7 @@ function render() {
   } else lastGain = null;
 
   const ranked = [...s.players].sort((a, b) => b.score - a.score);
-  const rows = list => list.map(p => `<div class="rank ${p.id === myId ? 'me' : ''}"><span class="av" style="background:${esc(p.color)}">${ini(p)}</span><span class="nm"><b>${esc(p.name)}${p.id === s.hostId ? ' ★' : ''}</b><i>${rankOf(p.score)}</i></span>${ph === 'vote' && s.voted.includes(p.id) ? '<span class="tick">✓</span>' : ''}${lastGain && lastGain[p.id] ? `<span class="g ${lastGain[p.id] > 0 ? 'pos' : 'neg'}">${lastGain[p.id] > 0 ? '+' : ''}${lastGain[p.id]}</span>` : ''}<span class="sc">${p.score}</span></div>`).join('');
+  const rows = list => list.map(p => `<div class="rank ${p.id === myId ? 'me' : ''}"><span class="av" style="background:${esc(p.color)}">${ini(p)}</span><span class="nm"><b>${esc(p.name)}${p.bot ? ' 🤖' : ''}${p.id === s.hostId ? ' ★' : ''}${p.away ? ' (away)' : ''}</b><i>${rankOf(p.score)}</i></span>${ph === 'vote' && s.voted.includes(p.id) ? '<span class="tick">✓</span>' : ''}${lastGain && lastGain[p.id] ? `<span class="g ${lastGain[p.id] > 0 ? 'pos' : 'neg'}">${lastGain[p.id] > 0 ? '+' : ''}${lastGain[p.id]}</span>` : ''}<span class="sc">${p.score}</span></div>`).join('');
   $('scores').innerHTML = rows(ranked);
 
   if (ph === 'over') {
@@ -507,7 +539,7 @@ function coach(s, ph, byId) {
   const mole = s.role === 'mole', W = s.word ? `<em>${esc(s.word.toUpperCase())}</em>` : '', C = s.category ? `<em>${esc(s.category)}</em>` : '';
   const mine = s.speakerId === myId, sp = byId[s.speakerId] ? esc(byId[s.speakerId].name) : 'Someone';
   let ic = '👋', t = '', x = '';
-  if (ph === 'lobby') { ic = '👥'; t = 'WAITING FOR PLAYERS'; x = 'You need <em>3 to 8 players</em>. Share the code above. When everyone is in, the host starts the game. Every round, one random player secretly becomes <em>the mole</em>.'; }
+  if (ph === 'lobby') { ic = '👥'; t = 'WAITING FOR PLAYERS'; x = 'You need <em>3 to 8 players</em>. Share the code above, or tap <em>Practice with bots</em> to try a game on your own. Every round, one random player secretly becomes <em>the mole</em>.'; }
   else if (ph === 'clue') {
     if (mole) { ic = '🕵️'; t = mine ? 'YOUR TURN: BLUFF A CLUE' : 'YOU ARE THE MOLE. BLEND IN.'; x = mine ? `Type <em>one word</em> that fits ${C} and matches the clues on the board, so you sound like you know the secret word.` : `You <em>don't know the word</em>, only the category ${C}. Watch the clues and work out what the word is. Then give a clue that sounds like you knew all along.`; }
     else { ic = mine ? '✍️' : '👀'; t = mine ? 'YOUR TURN: GIVE ONE CLUE' : `${sp.toUpperCase()} IS GIVING A CLUE`; x = mine ? `Type <em>one word</em> that hints at ${W}. Make it clear to your team, but not so obvious the mole can guess it.` : `Your secret word is ${W}. Watch each clue: does anyone sound like they <em>don't</em> know it? That's your mole.`; }

@@ -30,6 +30,41 @@ const MODS = [
 const OP_A = ['Midnight', 'Velvet', 'Crimson', 'Silent', 'Paper', 'Glass', 'Broken', 'Golden', 'Hollow', 'Neon', 'Quiet', 'Iron'];
 const OP_B = ['Falcon', 'Lantern', 'Harbor', 'Cipher', 'Orchid', 'Mirror', 'Compass', 'Raven', 'Ledger', 'Whisper', 'Comet', 'Anchor'];
 
+/* hints used by practice bots: three per word, plus generic category words for a bot mole */
+const HINTS = {
+  elephant: 'trunk,tusk,huge', penguin: 'ice,tuxedo,waddle', octopus: 'tentacles,ink,eight', giraffe: 'neck,tall,spots', kangaroo: 'pouch,hop,Australia',
+  dolphin: 'flipper,smart,splash', tiger: 'stripes,jungle,roar', owl: 'night,hoot,wise', crocodile: 'snap,swamp,scales', butterfly: 'wings,caterpillar,colorful',
+  pizza: 'cheese,slice,Italian', sushi: 'rice,raw,chopsticks', pancake: 'syrup,flip,breakfast', burrito: 'wrap,beans,Mexican', popcorn: 'movie,kernel,butter',
+  lasagna: 'layers,pasta,baked', avocado: 'green,guacamole,pit', doughnut: 'glazed,hole,sprinkles', ramen: 'noodles,broth,slurp', pretzel: 'salty,knot,twisted',
+  library: 'books,quiet,shelves', airport: 'gates,luggage,flights', museum: 'exhibit,art,tickets', hospital: 'doctor,nurse,ward', stadium: 'crowd,seats,game',
+  lighthouse: 'beacon,coast,tower', casino: 'gamble,chips,Vegas', aquarium: 'fish,tank,glass', subway: 'train,underground,tokens', campsite: 'tent,fire,woods',
+  pilot: 'cockpit,fly,captain', surgeon: 'scalpel,operate,scrubs', plumber: 'pipes,leak,wrench', detective: 'clues,case,magnifier', farmer: 'crops,tractor,barn',
+  lifeguard: 'whistle,rescue,tower', chef: 'kitchen,cook,apron', astronaut: 'space,suit,launch', magician: 'tricks,wand,rabbit', firefighter: 'hose,siren,ladder',
+  sandcastle: 'bucket,moat,tide', surfboard: 'wave,wax,ride', seashell: 'conch,ocean,collect', sunscreen: 'SPF,burn,lotion', umbrella: 'shade,parasol,spokes',
+  jellyfish: 'sting,float,tentacles', 'flip flops': 'sandals,thong,toes', towel: 'dry,terry,lay', volleyball: 'net,spike,serve',
+  archery: 'bow,target,arrow', surfing: 'wave,board,barrel', fencing: 'sword,mask,lunge', bowling: 'pins,strike,alley', curling: 'ice,stone,broom',
+  rugby: 'scrum,tackle,oval', karate: 'belt,chop,dojo', rowing: 'oars,crew,boat', skiing: 'slope,poles,snow', cricket: 'bat,wicket,innings',
+  blender: 'smoothie,blades,pulse', toaster: 'bread,pop,crumbs', whisk: 'eggs,beat,wire', colander: 'drain,holes,pasta', oven: 'bake,hot,roast',
+  kettle: 'boil,whistle,tea', spatula: 'flip,turner,rubber', fridge: 'cold,magnets,leftovers', teapot: 'spout,brew,porcelain', grater: 'cheese,shred,zest',
+  comet: 'tail,icy,Halley', rocket: 'launch,thrust,blastoff', galaxy: 'stars,spiral,Milky', asteroid: 'rock,belt,impact', telescope: 'lens,observe,stargazing',
+  satellite: 'orbit,signal,dish', eclipse: 'shadow,sun,moon', nebula: 'cloud,gas,dust', meteor: 'shooting,streak,fireball', orbit: 'circle,revolve,gravity',
+  dragon: 'fire,scales,hoard', castle: 'moat,tower,king', wizard: 'spell,staff,beard', unicorn: 'horn,rainbow,mythical', goblin: 'green,sneaky,gold',
+  mermaid: 'tail,sea,siren', 'pumpkin carriage': 'Cinderella,midnight,coach', 'magic mirror': 'reflection,fairest,wicked', beanstalk: 'Jack,giant,climb', witch: 'broom,cauldron,hat',
+  invisibility: 'vanish,unseen,cloak', flight: 'soar,wings,sky', telepathy: 'minds,read,thoughts', 'time travel': 'past,future,clock', 'super strength': 'lift,muscles,powerful',
+  teleporting: 'instant,poof,beam', 'mind control': 'puppet,brain,command', 'x-ray vision': 'bones,Superman,see-through', shapeshifting: 'morph,change,form', healing: 'cure,recover,mend',
+};
+const GENERIC = {
+  'Animals': 'wild,zoo,fur,nature,creature,habitat', 'Food': 'tasty,eat,hungry,delicious,dinner,meal', 'Places': 'visit,building,people,city,public,tourist',
+  'Jobs': 'career,work,uniform,training,skilled,paid', 'At the Beach': 'sand,summer,sun,ocean,holiday,coast', 'Sports': 'team,match,compete,score,athlete,trophy',
+  'In the Kitchen': 'cooking,counter,metal,handy,useful,clean', 'Space': 'universe,distant,cosmic,dark,huge,science', 'Fairy Tales': 'story,magic,once,legend,fantasy,enchanted',
+  'Superpowers': 'hero,mutant,comic,special,gift,amazing',
+};
+const FILLER_SHORT = 'big,old,cool,fun,nice,rare,true,odd'.split(',');
+const FILLER_LONG = 'interesting,mysterious,familiar,popular,fantastic,incredible,remarkable,wonderful'.split(',');
+const BOT_NAMES = ['Mira', 'Jules', 'Sol', 'Kit', 'Nova', 'Remy', 'Juno', 'Pax'];
+const rand = (a, b) => a + Math.random() * (b - a);
+const AWAY_MS = 45000, AWAY_LOBBY_MS = 15000;
+
 const rooms = new Map();
 const server = http.createServer((req, res) => {
   if (req.url === '/healthz') { res.end('ok'); return; }
@@ -78,11 +113,76 @@ function stateFor(room, p) {
     options: room.phase === 'guess' && isMole ? room.options : null,
     guessing: room.phase === 'guess',
     result: room.phase === 'result' ? room.result : null,
-    players: [...room.players.values()].map(q => ({ id: q.id, name: q.name, color: q.color, score: q.score })),
+    players: [...room.players.values()].map(q => ({ id: q.id, name: q.name, color: q.color, score: q.score, bot: !!q.bot, away: !!q.away })),
     final: room.phase === 'over',
   };
 }
-const broadcast = room => room.players.forEach(p => send(p, stateFor(room, p)));
+const broadcast = room => { room.players.forEach(p => send(p, stateFor(room, p))); botTick(room); };
+
+/* ---------- practice bots ---------- */
+function addBot(room) {
+  const used = new Set([...room.players.values()].map(q => q.name));
+  const name = BOT_NAMES.find(n => !used.has(n)) || 'Bot' + room.players.size;
+  const usedC = new Set([...room.players.values()].map(q => q.color));
+  const id = 'bot' + Math.random().toString(36).slice(2, 7);
+  const bot = { id, name, color: COLORS.find(c => !usedC.has(c)) || COLORS[0], score: 0, ws: { readyState: 0 }, bot: true };
+  room.players.set(id, bot);
+  return bot;
+}
+function botClueWord(room, bot) {
+  const isMole = bot.id === room.moleId;
+  const own = isMole ? [] : String(HINTS[room.word] || '').split(',');
+  const pool = shuffle([...own, ...String(GENERIC[room.category] || '').split(',')]).filter(Boolean);
+  const mod = room.mod.id;
+  const ok = w => {
+    const n = norm(w);
+    if (!n || (!isMole && n === norm(room.word))) return false;
+    if (mod === 'short' && n.length > 5) return false;
+    if (mod === 'long' && n.length < 6) return false;
+    return !room.clues.some(c => c.text !== '—' && (norm(c.text).includes(n) || n.includes(norm(c.text))));
+  };
+  const allowed = isMole ? pool : [...own.filter(ok), ...pool.filter(ok)];
+  const fill = (mod === 'long' ? FILLER_LONG : FILLER_SHORT).filter(ok);
+  return (isMole ? pool.filter(ok) : allowed)[0] || fill[0] || '—';
+}
+function botTick(room) {
+  if (![...room.players.values()].some(p => p.bot)) return;
+  const stamp = () => `${room.roundNo}:${room.phase}:${room.turn}`;
+  const base = stamp();
+  room.players.forEach(p => {
+    if (!p.bot) return;
+    const act = (key, delay, fn) => {
+      const k = `${base}:${p.id}:${key}`;
+      if (room.botDone.has(k)) return;
+      room.botDone.add(k);
+      setTimeout(() => { if (rooms.get(room.code) !== room || !room.players.has(p.id) || stamp() !== base) return; fn(); }, delay);
+    };
+    if (room.phase === 'clue' && speakerId(room) === p.id) act('clue', rand(1500, 3500), () => submitClue(room, p.id, botClueWord(room, p)));
+    else if (room.phase === 'discuss') {
+      act('chat', rand(2500, 9000), () => {
+        const others = [...room.players.values()].filter(q => q.id !== p.id);
+        const o = others[Math.floor(Math.random() * others.length)];
+        const lines = p.id === room.moleId
+          ? ['My clue was totally fine!', `Why is everyone looking at me? Maybe ${o.name}…`, `${o.name} was a bit vague, honestly.`]
+          : [`${o.name}'s clue felt a little vague…`, `Hmm, I'm not sure about ${o.name}.`, 'Anyone else find one of those clues off?', `I trust ${o.name}, to be fair.`];
+        sendAll(room, { type: 'chat', from: p.name, color: p.color, text: lines[Math.floor(Math.random() * lines.length)] });
+      });
+      act('ready', rand(9000, 17000), () => { room.ready.add(p.id); if (room.ready.size >= room.players.size) { clearTimeout(room.timer); startVote(room); } else broadcast(room); });
+    } else if (room.phase === 'vote') {
+      act('vote', rand(3000, 9000), () => {
+        const others = [...room.players.values()].filter(q => q.id !== p.id);
+        const nonMole = others.filter(q => q.id !== room.moleId);
+        const guessRight = p.id !== room.moleId && Math.random() < 0.4;
+        const t = guessRight ? room.players.get(room.moleId) : (nonMole.length && p.id !== room.moleId ? nonMole : others)[Math.floor(Math.random() * (nonMole.length && p.id !== room.moleId ? nonMole : others).length)];
+        room.votes.set(p.id, t.id);
+        if (guessRight && Math.random() < 0.3) room.stakes.add(p.id);
+        if (room.votes.size >= room.players.size) tally(room); else broadcast(room);
+      });
+    } else if (room.phase === 'guess' && p.id === room.moleId) {
+      act('guess', rand(3500, 8000), () => resolve(room, Math.random() < 0.35 ? room.word : room.options.find(o => o !== room.word)));
+    }
+  });
+}
 const arm = (room, ms, fn) => { clearTimeout(room.timer); room.deadline = Date.now() + ms; room.timer = setTimeout(fn, ms); };
 
 function startGame(room) {
@@ -107,7 +207,7 @@ function nextRound(room) {
   room.word = words[Math.floor(Math.random() * words.length)];
   room.options = shuffle([room.word, ...shuffle(words.filter(w => w !== room.word)).slice(0, 5)]);
   room.order = shuffle([...room.players.keys()]);
-  room.turn = 0; room.clues = []; room.votes = new Map(); room.stakes = new Set(); room.ready = new Set(); room.result = null;
+  room.turn = 0; room.clues = []; room.votes = new Map(); room.stakes = new Set(); room.ready = new Set(); room.result = null; room.botDone = new Set();
   room.mod = room.roundNo === 1 ? MODS[0] : MODS[Math.floor(Math.random() * MODS.length)];
   room.opName = `Operation ${OP_A[Math.floor(Math.random() * OP_A.length)]} ${OP_B[Math.floor(Math.random() * OP_B.length)]}`;
   room.caseNo = 1000 + Math.floor(Math.random() * 9000);
@@ -211,7 +311,7 @@ wss.on('connection', ws => {
       let t;
       if (m.type === 'create') {
         t = { code: makeCode(), players: new Map(), hostId: null, phase: 'lobby', queue: [], roundNo: 0, totalRounds: 0, moleId: null,
-              category: '', word: '', options: [], order: [], turn: 0, clues: [], votes: new Map(), stakes: new Set(), mod: MODS[0], opName: '', caseNo: 0, ready: new Set(), result: null, timer: null, deadline: 0 };
+              category: '', word: '', options: [], order: [], turn: 0, clues: [], votes: new Map(), stakes: new Set(), mod: MODS[0], opName: '', caseNo: 0, ready: new Set(), result: null, timer: null, deadline: 0, botDone: new Set() };
         rooms.set(t.code, t);
       } else {
         t = rooms.get(String(m.code || '').toUpperCase().trim());
@@ -221,18 +321,43 @@ wss.on('connection', ws => {
       }
       const id = Math.random().toString(36).slice(2, 9);
       const used = new Set([...t.players.values()].map(q => q.color));
-      player = { id, name, color: COLORS.find(c => !used.has(c)) || COLORS[0], score: 0, ws };
+      player = { id, name, color: COLORS.find(c => !used.has(c)) || COLORS[0], score: 0, ws, token: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) };
       t.players.set(id, player);
       if (!t.hostId) t.hostId = id;
       room = t;
-      send(player, { type: 'joined', id, code: room.code });
+      send(player, { type: 'joined', id, code: room.code, token: player.token });
       broadcast(room);
       sys(room, `${name} joined.`);
+      return;
+    }
+    if (m.type === 'rejoin') {
+      if (room) return;
+      const t = rooms.get(String(m.code || '').toUpperCase().trim());
+      const p = t && t.players.get(m.id);
+      if (!p || p.bot || p.token !== m.token) return send({ ws }, { type: 'error', message: 'expired' });
+      clearTimeout(p.awayTimer); p.away = false;
+      const old = p.ws; p.ws = ws; player = p; room = t;
+      try { if (old && old.close) old.close(); } catch {}
+      send(player, { type: 'joined', id: p.id, code: t.code, token: p.token });
+      broadcast(room);
+      sys(room, `${p.name} reconnected.`);
       return;
     }
     if (!room || !player) return;
 
     switch (m.type) {
+      case 'practice':
+        if (player.id === room.hostId && room.phase === 'lobby') {
+          while (room.players.size < 4) addBot(room);
+          if (room.players.size === 4 || room.players.size < MAX_PLAYERS) startGame(room);
+        }
+        break;
+      case 'addbot':
+        if (player.id === room.hostId && room.phase === 'lobby' && room.players.size < MAX_PLAYERS) { const b = addBot(room); broadcast(room); sys(room, `${b.name} (bot) joined.`); }
+        break;
+      case 'clearbots':
+        if (player.id === room.hostId && room.phase === 'lobby') { [...room.players.values()].filter(q => q.bot).forEach(q => room.players.delete(q.id)); broadcast(room); }
+        break;
       case 'start':
         if (player.id === room.hostId && (room.phase === 'lobby' || room.phase === 'over') && room.players.size >= MIN_PLAYERS) startGame(room);
         break;
@@ -276,19 +401,30 @@ wss.on('connection', ws => {
   });
 
   ws.on('close', () => {
-    if (!room || !player) return;
-    room.players.delete(player.id);
-    room.votes.delete(player.id); room.ready.delete(player.id);
-    if (room.players.size === 0) { clearTimeout(room.timer); rooms.delete(room.code); return; }
-    if (room.hostId === player.id) room.hostId = room.players.keys().next().value;
-    sys(room, `${player.name} left.`);
-    if (inRound(room) && room.players.size < MIN_PLAYERS) return endGame(room);
-    if (inRound(room) && player.id === room.moleId) { sys(room, 'The mole left! Starting the next round.', 'reveal'); return nextRound(room); }
-    if (room.phase === 'clue' && player.id === speakerId(room)) return submitClue(room, null, '—');
-    if (room.phase === 'discuss' && room.ready.size >= room.players.size) return startVote(room);
-    if (room.phase === 'vote' && room.votes.size >= room.players.size) return tally(room);
-    broadcast(room);
+    if (!room || !player || player.ws !== ws) return;
+    // keep the seat for a short grace period so a locked phone or a dropped connection can rejoin
+    const r = room, p = player;
+    p.away = true;
+    clearTimeout(p.awayTimer);
+    p.awayTimer = setTimeout(() => removePlayer(r, p), (r.phase === 'lobby' || r.phase === 'over') ? AWAY_LOBBY_MS : AWAY_MS);
+    broadcast(r);
   });
 });
+
+function removePlayer(room, player) {
+  if (rooms.get(room.code) !== room || !room.players.has(player.id)) return;
+  room.players.delete(player.id);
+  room.votes.delete(player.id); room.ready.delete(player.id); room.stakes.delete(player.id);
+  const humans = [...room.players.values()].filter(q => !q.bot);
+  if (humans.length === 0) { clearTimeout(room.timer); rooms.delete(room.code); return; }
+  if (room.hostId === player.id) room.hostId = humans[0].id;
+  sys(room, `${player.name} left.`);
+  if (inRound(room) && room.players.size < MIN_PLAYERS) return endGame(room);
+  if (inRound(room) && player.id === room.moleId) { sys(room, 'The mole left! Starting the next round.', 'reveal'); return nextRound(room); }
+  if (room.phase === 'clue' && player.id === speakerId(room)) return submitClue(room, null, '—');
+  if (room.phase === 'discuss' && room.ready.size >= room.players.size) return startVote(room);
+  if (room.phase === 'vote' && room.votes.size >= room.players.size) return tally(room);
+  broadcast(room);
+}
 
 server.listen(PORT, () => console.log(`Mole Hunt on http://localhost:${PORT}`));
