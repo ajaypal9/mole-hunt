@@ -85,6 +85,16 @@ const AWAY_MS = 45000, AWAY_LOBBY_MS = 15000;
 const rooms = new Map();
 const server = http.createServer((req, res) => {
   if (req.url === '/healthz') { res.end('ok'); return; }
+  const STATIC = { '/favicon.svg': 'image/svg+xml', '/favicon.ico': 'image/svg+xml', '/og.png': 'image/png', '/icon-512.png': 'image/png', '/apple-touch-icon.png': 'image/png', '/manifest.json': 'application/manifest+json' };
+  const sp = req.url.split('?')[0];
+  if (STATIC[sp]) {
+    const f = sp === '/favicon.ico' ? '/favicon.svg' : sp;
+    fs.readFile(path.join(__dirname, 'public', f), (e, d) => {
+      if (e) { res.writeHead(404); res.end(); return; }
+      res.writeHead(200, { 'Content-Type': STATIC[sp], 'Cache-Control': 'public, max-age=86400' }); res.end(d);
+    });
+    return;
+  }
   fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
     if (err) { res.writeHead(500); res.end('error'); return; }
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
