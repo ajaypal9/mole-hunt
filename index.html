@@ -191,6 +191,16 @@
   .ex { background:#fff6a8; padding:8px 10px; margin:8px 0; font:700 22px var(--hand); box-shadow:0 4px 8px rgba(0,0,0,.25); transform:rotate(-1deg); }
   .dots { display:flex; gap:6px; justify-content:center; margin:12px 0 4px; } .dots i { width:9px; height:9px; border-radius:50%; background:#b9a77c; } .dots i.on { background:var(--red); }
   .sharerow { display:flex; gap:10px; align-items:center; justify-content:center; margin-top:14px; flex-wrap:wrap; }
+  .coderow { display:flex; align-items:center; justify-content:center; gap:14px; margin:6px 0 18px; }
+  .coderow .plate { margin:0; }
+  .ibtn { flex:none; width:54px; height:54px; display:inline-flex; align-items:center; justify-content:center; padding:0; cursor:pointer; color:#2a1d00; background:linear-gradient(#e3c36f,#b48a34); border:2px solid #7d5d1b; border-radius:50%; box-shadow:0 4px 0 #6e5013, 0 8px 14px rgba(0,0,0,.4); transition:transform .08s, box-shadow .08s; }
+  .ibtn:active { transform:translateY(3px); box-shadow:0 1px 0 #6e5013, 0 3px 8px rgba(0,0,0,.4); }
+  .ibtn.wide { width:96px; border-radius:30px; }
+  .divider { height:0; border-top:2px dashed rgba(90,60,10,.35); margin:14px 4px 12px; }
+  .invite { display:flex; align-items:center; justify-content:center; gap:22px; }
+  .invcol { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .folder .badges { margin-top:8px; }
+  @media (max-width:420px) { .coderow { gap:10px; } .coderow .plate { font-size:58px; letter-spacing:10px; padding:4px 6px 0 16px; } .ibtn { width:48px; height:48px; } .ibtn.wide { width:84px; } .invite { gap:16px; } }
   #qr { background:#f3ead0; padding:8px; border-radius:6px; box-shadow:0 6px 12px rgba(0,0,0,.4); line-height:0; }
   #qr img, #qr canvas { max-width:132px; }
   .setrow { margin:10px 0; } .setrow .label { display:block; margin-bottom:5px; }
@@ -284,11 +294,20 @@
 
   <div id="v-lobby" class="hidden">
     <div class="folder center" data-tab="BRIEFING ROOM">
-      <div class="label">SAFE-HOUSE CODE — share it with your agents</div>
-      <div class="plate" id="bigcode"></div>
+      <div class="label">SAFE-HOUSE CODE</div>
+      <div class="coderow">
+        <div class="plate" id="bigcode"></div>
+        <button class="ibtn" id="copycode" title="Copy code" aria-label="Copy code"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button>
+      </div>
       <div class="small" id="origin"></div>
+      <div class="divider"></div>
+      <div class="label">AGENTS IN THE ROOM</div>
       <div class="badges" id="lobbyplayers"></div>
-      <div class="sharerow"><button class="btn sm" id="copycode">📋 COPY CODE</button><button class="btn brass sm" id="share">📤 SHARE INVITE LINK</button><div id="qr"></div></div>
+      <div class="divider"></div>
+      <div class="invite">
+        <div id="qr"></div>
+        <div class="invcol"><div class="label">SCAN OR SEND</div><button class="ibtn wide" id="share" title="Share invite link" aria-label="Share invite link"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button></div>
+      </div>
     </div>
     <div class="paper" id="settingsbox">
       <h3>GAME SETTINGS <span class="small" id="sethint" style="font-family:var(--type);letter-spacing:0"></span></h3>
