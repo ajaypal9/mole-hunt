@@ -176,6 +176,28 @@
   .slide p { font-size:15.5px; line-height:1.5; margin:8px 0; }
   .ex { background:#fff6a8; padding:8px 10px; margin:8px 0; font:700 22px var(--hand); box-shadow:0 4px 8px rgba(0,0,0,.25); transform:rotate(-1deg); }
   .dots { display:flex; gap:6px; justify-content:center; margin:12px 0 4px; } .dots i { width:9px; height:9px; border-radius:50%; background:#b9a77c; } .dots i.on { background:var(--red); }
+  .sharerow { display:flex; gap:10px; align-items:center; justify-content:center; margin-top:14px; flex-wrap:wrap; }
+  #qr { background:#f3ead0; padding:8px; border-radius:6px; box-shadow:0 6px 12px rgba(0,0,0,.4); line-height:0; }
+  #qr img, #qr canvas { max-width:132px; }
+  .setrow { margin:10px 0; } .setrow .label { display:block; margin-bottom:5px; }
+  .seg { display:flex; gap:0; } .seg button { flex:1; padding:8px 4px; border:2px solid var(--inkl); background:transparent; color:var(--ink); font:400 18px var(--disp); letter-spacing:1px; margin-left:-2px; }
+  .seg button:first-child { border-radius:4px 0 0 4px; margin-left:0; } .seg button:last-child { border-radius:0 4px 4px 0; }
+  .seg button.on { background:var(--ink); color:var(--paper); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chips button { padding:5px 11px; border:2px solid var(--inkl); background:transparent; color:var(--ink); border-radius:999px; font:400 13px var(--type); }
+  .chips button.on { background:var(--red); border-color:var(--red); color:#fff; }
+  .locked { opacity:.55; pointer-events:none; }
+  details summary { cursor:pointer; font:400 18px var(--disp); letter-spacing:1.5px; margin-top:8px; }
+  details input { margin-top:8px; }
+  .reactbar { display:flex; justify-content:center; gap:6px; flex-wrap:wrap; margin:6px 0 12px; }
+  .reactbar button { font-size:24px; background:rgba(255,255,255,.08); border:1px solid #4a3d2e; border-radius:999px; padding:4px 11px; transition:transform .1s; }
+  .reactbar button:active { transform:scale(1.35); }
+  .floater { position:fixed; bottom:90px; z-index:55; font-size:34px; pointer-events:none; animation:floatup 2.2s ease-out forwards; text-align:center; }
+  .floater small { display:block; font:400 11px var(--type); color:#fff; text-shadow:0 1px 3px #000; }
+  @keyframes floatup { to { transform:translateY(-52vh) rotate(var(--rr,0deg)); opacity:0; } }
+  .award { display:flex; gap:12px; align-items:center; background:rgba(0,0,0,.06); padding:8px 10px; border-left:5px solid var(--red); margin-bottom:6px; }
+  .award .ic { font-size:30px; } .award b { font:400 20px var(--disp); letter-spacing:1px; display:block; }
+  .toast { position:fixed; left:50%; bottom:64px; transform:translateX(-50%); background:#000d; color:#fff; padding:8px 16px; border-radius:20px; z-index:80; font-size:14px; }
   .mute { position:fixed; right:10px; bottom:10px; z-index:40; background:#000a; border:1px solid #4a3d2e; color:#cdbd9a; border-radius:20px; padding:6px 12px; font:400 12px var(--type); }
   canvas#fx { position:fixed; inset:0; pointer-events:none; z-index:50; }
 </style>
@@ -183,6 +205,7 @@
 <body>
 <div class="desk"></div><div class="rain"></div>
 <canvas id="fx"></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <button class="mute" id="mute">🔊 sound on</button>
 <button class="helpbtn" id="helpbtn">? HOW TO PLAY</button>
 <div class="modal hidden" id="modal"><div class="paper">
@@ -251,6 +274,20 @@
       <div class="plate" id="bigcode"></div>
       <div class="small" id="origin"></div>
       <div class="badges" id="lobbyplayers"></div>
+      <div class="sharerow"><button class="btn brass sm" id="share">📤 SHARE INVITE LINK</button><div id="qr"></div></div>
+    </div>
+    <div class="paper" id="settingsbox">
+      <h3>GAME SETTINGS <span class="small" id="sethint" style="font-family:var(--type);letter-spacing:0"></span></h3>
+      <div id="setbody">
+        <div class="setrow"><span class="label">ROUNDS</span><div class="seg" id="seg-rounds"></div></div>
+        <div class="setrow"><span class="label">CLUE TIMER</span><div class="seg" id="seg-clue"></div></div>
+        <div class="setrow"><span class="label">CATEGORIES (TAP TO TOGGLE)</span><div class="chips" id="cats"></div></div>
+        <details id="customd"><summary>+ ADD YOUR OWN CATEGORY</summary>
+          <input type="text" id="cname" maxlength="20" placeholder="Category name, e.g. My Pets" autocomplete="off">
+          <input type="text" id="cwords" placeholder="6+ words, separated by commas" autocomplete="off">
+          <button class="btn sm block" id="cadd" style="margin-top:8px">ADD CATEGORY</button>
+        </details>
+      </div>
     </div>
     <button class="btn brass block" id="start"></button>
     <button class="btn alt block hidden" id="practice" style="margin-top:12px">🤖 PRACTICE WITH BOTS (SOLO)</button>
@@ -322,10 +359,13 @@
   <div id="v-over" class="hidden folder center" data-tab="OPERATION COMPLETE">
     <div class="stamp green slam">DEBRIEFED</div>
     <div id="podium" style="text-align:left;margin:16px 0 8px"></div>
-    <button class="btn brass block" id="again">NEW OPERATION</button>
+    <div id="awards" style="text-align:left;margin-bottom:10px"></div>
+    <button class="btn brass block" id="rematch">⚡ REMATCH</button>
+    <button class="btn alt sm block" id="again" style="margin-top:10px">BACK TO LOBBY</button>
     <p class="dim" id="overwait"></p>
   </div>
 
+  <div class="reactbar" id="reactbar"><button>👀</button><button>🤔</button><button>😂</button><button>😱</button><button>🔥</button><button>👏</button><button>🕵️</button><button>🎭</button></div>
   <div class="paper" style="margin-top:6px"><h3>AGENCY RANKS</h3><div id="scores"></div></div>
   <div id="lobbychat" class="paper hidden">
     <div class="chat" id="chat2"></div>
@@ -340,6 +380,7 @@ const ini = p => esc((p.name || '?').trim().charAt(0).toUpperCase());
 const rot = i => ((i * 37 % 9) - 4) * 0.9;
 const RANKS = [[14, 'SPYMASTER'], [8, 'HANDLER'], [3, 'FIELD AGENT'], [0, 'ROOKIE']];
 const rankOf = s => RANKS.find(r => s >= r[0])[1];
+let lastQr = '';
 let ws, myId = null, S = null, showWord = true, lastGain = null, lastKey = '', fxFor = '', lastSpeaker = '', soundOn = true;
 const TOTALS = { clue: 25000, discuss: 50000, vote: 25000, guess: 20000, result: 11000 };
 
@@ -374,8 +415,9 @@ function connect(first) {
       sock.onclose = null; sock.close();
     }
     else if (m.type === 'joined') { myId = m.id; retries = 0; session = { code: m.code, id: m.id, token: m.token }; saveSession(); setBusy(false); $('recon').classList.add('hidden'); $('home').classList.add('hidden'); $('app').classList.remove('hidden'); if (!mine) window.scrollTo(0, 0); }
-    else if (m.type === 'state') { S = m; render(); }
+    else if (m.type === 'state') { S = m; TOTALS.clue = m.clueMs || 25000; render(); }
     else if (m.type === 'chat') addChat(m);
+    else if (m.type === 'react') floatEmoji(m);
   };
   ws.onclose = () => {
     if (sock !== ws) return;
@@ -386,6 +428,10 @@ function connect(first) {
     } else if (!myId) { setBusy(false); $('err').textContent = 'Could not reach the server. It may be waking up, so try again in a few seconds.'; }
   };
 }
+const QS = new URLSearchParams(location.search), inviteRoom = (QS.get('room') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4), DEMO = QS.get('demo');
+if (DEMO) session = null;
+if (session && inviteRoom && session.code !== inviteRoom) { session = null; saveSession(); }
+if (inviteRoom && !session) { $('code').value = inviteRoom; $('joinbox').classList.remove('hidden'); $('showjoin').classList.add('hidden'); setTimeout(() => $('name').focus(), 50); }
 if (session) { setBusy(true, 'Rejoining your game…'); myId = session.id; connect({ type: 'rejoin', code: session.code, id: session.id, token: session.token }); }
 const out = o => ws && ws.readyState === 1 && ws.send(JSON.stringify(o));
 const nm = () => $('name').value.trim() || 'Agent';
@@ -394,6 +440,20 @@ $('showjoin').onclick = () => $('joinbox').classList.toggle('hidden');
 $('join').onclick = () => { $('err').textContent = ''; connect({ type: 'join', name: nm(), code: $('code').value }); };
 $('code').onkeydown = e => { if (e.key === 'Enter') $('join').click(); };
 $('start').onclick = () => out({ type: 'start' });
+$('rematch').onclick = () => out({ type: 'rematch' });
+function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
+function floatEmoji(m) {
+  const d = document.createElement('div'); d.className = 'floater'; d.style.left = (8 + Math.random() * 78) + '%'; d.style.setProperty('--rr', (Math.random() * 40 - 20) + 'deg');
+  d.innerHTML = `${esc(m.emoji)}<small>${esc(m.name || '')}</small>`; document.body.appendChild(d); setTimeout(() => d.remove(), 2300);
+}
+document.querySelectorAll('#reactbar button').forEach(b => b.onclick = () => { out({ type: 'react', emoji: b.textContent }); if (!ws || ws.readyState !== 1) floatEmoji({ emoji: b.textContent, name: 'you' }); });
+$('share').onclick = async () => {
+  if (!S) return; const url = `${location.origin}/?room=${S.code}`;
+  try { if (navigator.share) { await navigator.share({ title: 'Mole Hunt', text: `Join my Mole Hunt game! Room code ${S.code}`, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); toast('Invite link copied!'); } catch { prompt('Copy this invite link:', url); }
+};
+function patchSettings(p) { if (S && S.hostId === myId) out({ type: 'settings', settings: { ...S.settings, ...p } }); }
+$('cadd').onclick = () => { const name = $('cname').value.trim(), words = $('cwords').value; if (!name) return toast('Give the category a name'); patchSettings({ custom: { name, words } }); $('cname').value = ''; $('cwords').value = ''; $('customd').open = false; };
 $('practice').onclick = () => out({ type: 'practice' });
 $('addbot').onclick = () => out({ type: 'addbot' });
 $('clearbots').onclick = () => out({ type: 'clearbots' });
@@ -441,6 +501,24 @@ function render() {
 
   $('bigcode').textContent = s.code; $('origin').textContent = location.origin;
   $('lobbyplayers').innerHTML = s.players.map((p, i) => `<div class="idcard" style="--r:${rot(i)}deg;${p.away ? 'opacity:.45' : ''}"><div class="ph" style="background:${esc(p.color)}">${p.bot ? '🤖' : ini(p)}</div><div class="nm">${esc(p.name)}${p.id === s.hostId ? ' ★' : ''}${p.away ? ' (away)' : ''}</div></div>`).join('');
+  if (ph === 'lobby') {
+    const st = s.settings, hostEdit = host, eff = st.cats.length ? st.cats : s.allCats;
+    $('settingsbox').classList.remove('hidden');
+    $('setbody').classList.toggle('locked', !hostEdit);
+    $('sethint').textContent = hostEdit ? '· you are the host' : '· only the host can change these';
+    const seg = (id, opts, cur, fn) => { $(id).innerHTML = opts.map(([v, l]) => `<button class="${cur === v ? 'on' : ''}" data-v="${v}">${l}</button>`).join(''); $(id).querySelectorAll('button').forEach(b => b.onclick = () => fn(+b.dataset.v)); };
+    seg('seg-rounds', [[0, 'AUTO'], [2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']], st.rounds, v => patchSettings({ rounds: v }));
+    seg('seg-clue', [[15, '15s'], [25, '25s'], [40, '40s']], st.clueSec, v => patchSettings({ clueSec: v }));
+    $('cats').innerHTML = s.allCats.map(c => `<button class="${eff.includes(c) ? 'on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
+    $('cats').querySelectorAll('button').forEach(b => b.onclick = () => {
+      let next = eff.includes(b.dataset.c) ? eff.filter(c => c !== b.dataset.c) : [...eff, b.dataset.c];
+      if (!next.length) return toast('Keep at least one category on');
+      patchSettings({ cats: next.length === s.allCats.length ? [] : next });
+    });
+    if (s.code !== lastQr && typeof QRCode !== 'undefined') { lastQr = s.code; $('qr').innerHTML = ''; try { new QRCode($('qr'), { text: `${location.origin}/?room=${s.code}`, width: 132, height: 132, colorDark: '#2a2118', colorLight: '#f3ead0', correctLevel: QRCode.CorrectLevel.M }); } catch {} }
+    $('qr').classList.toggle('hidden', typeof QRCode === 'undefined');
+  } else $('settingsbox').classList.add('hidden');
+  $('reactbar').classList.toggle('hidden', !['lobby', 'discuss', 'vote', 'result', 'over'].includes(ph));
   const hasBots = s.players.some(p => p.bot);
   $('practice').classList.toggle('hidden', !(host && ph === 'lobby' && s.players.length < 4));
   $('botrow').classList.toggle('hidden', !(host && ph === 'lobby' && (hasBots || s.players.length < 8)));
@@ -530,7 +608,12 @@ function render() {
 
   if (ph === 'over') {
     $('podium').innerHTML = ranked.map((p, i) => `<div class="rank"><span style="font-size:22px;width:26px">${['🥇', '🥈', '🥉'][i] || ''}</span><span class="av" style="background:${esc(p.color)}">${ini(p)}</span><span class="nm"><b>${esc(p.name)}</b><i>${rankOf(p.score)}</i></span><span class="sc">${p.score}</span></div>`).join('');
-    $('again').classList.toggle('hidden', !host); $('overwait').textContent = host ? '' : 'Waiting for the case officer…';
+    $('again').classList.toggle('hidden', !host); $('rematch').classList.toggle('hidden', !host); $('overwait').textContent = host ? '' : 'Waiting for the case officer…';
+    const top = (k) => { const m = Math.max(...s.players.map(p => p[k] || 0)); return m > 0 ? s.players.filter(p => (p[k] || 0) === m) : []; };
+    const det = top('det'), blf = top('bluff'), aw = [];
+    if (det.length) aw.push(['🔎', 'SHARPEST DETECTIVE', det.map(p => p.name).join(' & '), `${det[0].det} correct vote${det[0].det > 1 ? 's' : ''}`]);
+    if (blf.length) aw.push(['🎭', 'MASTER OF DISGUISE', blf.map(p => p.name).join(' & '), `${blf[0].bluff} successful bluff${blf[0].bluff > 1 ? 's' : ''}`]);
+    $('awards').innerHTML = aw.map(a => `<div class="award"><span class="ic">${a[0]}</span><span><b>${a[1]}</b>${esc(a[2])} · ${a[3]}</span></div>`).join('');
     if (fxFor !== 'over') { fxFor = 'over'; sfx.win(); burst(); }
   }
 }
@@ -567,7 +650,7 @@ $('helpbtn').onclick = openHelp;
 $('mprev').onclick = () => { mi = Math.max(0, mi - 1); showSlide(); };
 $('mnext').onclick = () => { if (mi >= slides.length - 1) closeHelp(); else { mi++; showSlide(); } };
 $('modal').onclick = e => { if (e.target === $('modal')) closeHelp(); };
-try { if (!localStorage.getItem('mh_seen')) openHelp(); } catch { openHelp(); }
+try { if (!DEMO && !localStorage.getItem('mh_seen')) openHelp(); } catch { if (!DEMO) openHelp(); }
 
 setInterval(() => {
   if (!S || !TOTALS[S.phase]) return;
@@ -591,6 +674,19 @@ function tick() {
   parts = parts.filter(p => p.life > 0 && p.y < fx.height + 40);
   raf = parts.length ? requestAnimationFrame(tick) : 0;
   if (!parts.length) fctx.clearRect(0, 0, fx.width, fx.height);
+}
+
+/* ?demo=clue|vote|result renders a static sample screen with no server (used for screenshots) */
+if (DEMO) {
+  document.querySelectorAll('link[media=print]').forEach(l => { l.media = 'all'; });
+  myId = 'me'; soundOn = false; $('mute').classList.add('hidden'); $('helpbtn').classList.add('hidden');
+  const P = [['me', 'Ajay', '#ef476f', 3], ['p1', 'Mira', '#ffd166', 5], ['p2', 'Jules', '#06d6a0', 2], ['p3', 'Sol', '#118ab2', 4]].map(([id, name, color, score]) => ({ id, name, color, score, bot: false, away: false, det: 1, bluff: 0 }));
+  const clues = [['p1', 'Mira', '#ffd166', 'cold', 1], ['p3', 'Sol', '#118ab2', 'magnets', 1], ['p2', 'Jules', '#06d6a0', 'metal', 1], ['me', 'Ajay', '#ef476f', 'leftovers', 1], ['p1', 'Mira', '#ffd166', 'kitchen', 2], ['p3', 'Sol', '#118ab2', 'door', 2]].map(([pid, name, color, text, r]) => ({ pid, name, color, text, r }));
+  S = { type: 'state', code: 'KQWZ', phase: DEMO === 'vote' ? 'vote' : DEMO === 'result' ? 'result' : 'clue', hostId: 'me', round: 2, rounds: 4, timeLeft: 16000, category: 'In the Kitchen', role: 'crew', word: 'fridge',
+        speakerId: 'p2', clueRound: 2, clues, ready: [], voted: ['p1'], myVote: DEMO === 'vote' ? 'p2' : null, myStake: DEMO === 'vote', mod: { id: 'std', name: 'Fresh Intel', desc: 'No clue may repeat or contain an earlier one.' },
+        opName: 'Operation Velvet Raven', caseNo: 4271, options: null, guessing: false, clueMs: 25000, settings: { rounds: 0, clueSec: 25, cats: [], custom: null }, allCats: [], players: P, final: false,
+        result: DEMO === 'result' ? { outcome: 'caught', moleId: 'p2', moleName: 'Jules', word: 'fridge', guess: 'oven', accusedName: 'Jules', gain: { me: 3, p1: 3, p2: 0, p3: 2 }, votes: { me: 'p2', p1: 'p2', p3: 'p2' }, stakes: ['me'] } : null };
+  TOTALS.clue = 25000; $('home').classList.add('hidden'); $('app').classList.remove('hidden'); render();
 }
 </script>
 </body>

@@ -19,6 +19,11 @@ const BANK = {
   'Space': ['comet', 'rocket', 'galaxy', 'asteroid', 'telescope', 'satellite', 'eclipse', 'nebula', 'meteor', 'orbit'],
   'Fairy Tales': ['dragon', 'castle', 'wizard', 'unicorn', 'goblin', 'mermaid', 'pumpkin carriage', 'magic mirror', 'beanstalk', 'witch'],
   'Superpowers': ['invisibility', 'flight', 'telepathy', 'time travel', 'super strength', 'teleporting', 'mind control', 'x-ray vision', 'shapeshifting', 'healing'],
+  'Landmarks': ['eiffel tower', 'great wall', 'pyramids', 'statue of liberty', 'big ben', 'colosseum', 'taj mahal', 'golden gate', 'mount rushmore', 'stonehenge'],
+  'School': ['backpack', 'blackboard', 'homework', 'cafeteria', 'recess', 'locker', 'textbook', 'principal', 'notebook', 'calculator'],
+  'Music': ['guitar', 'drums', 'piano', 'violin', 'trumpet', 'concert', 'microphone', 'orchestra', 'saxophone', 'headphones'],
+  'Weather': ['tornado', 'rainbow', 'blizzard', 'thunder', 'drought', 'fog', 'hurricane', 'snowflake', 'lightning', 'heatwave'],
+  'Holidays': ['fireworks', 'snowman', 'turkey', 'candy cane', 'confetti', 'costume', 'mistletoe', 'pumpkin pie', 'gift wrap', 'new year'],
 };
 
 const MODS = [
@@ -51,6 +56,16 @@ const HINTS = {
   dragon: 'fire,scales,hoard', castle: 'moat,tower,king', wizard: 'spell,staff,beard', unicorn: 'horn,rainbow,mythical', goblin: 'green,sneaky,gold',
   mermaid: 'tail,sea,siren', 'pumpkin carriage': 'Cinderella,midnight,coach', 'magic mirror': 'reflection,fairest,wicked', beanstalk: 'Jack,giant,climb', witch: 'broom,cauldron,hat',
   invisibility: 'vanish,unseen,cloak', flight: 'soar,wings,sky', telepathy: 'minds,read,thoughts', 'time travel': 'past,future,clock', 'super strength': 'lift,muscles,powerful',
+  'eiffel tower': 'Paris,iron,France', 'great wall': 'China,ancient,long', pyramids: 'Egypt,pharaoh,desert', 'statue of liberty': 'torch,New York,green', 'big ben': 'clock,London,chime',
+  colosseum: 'Rome,gladiator,arena', 'taj mahal': 'India,marble,tomb', 'golden gate': 'bridge,San Francisco,red', 'mount rushmore': 'faces,carved,presidents', stonehenge: 'stones,circle,England',
+  backpack: 'straps,books,carry', blackboard: 'chalk,teacher,write', homework: 'assignment,due,evening', cafeteria: 'lunch,tray,lunchroom', recess: 'playground,break,outside',
+  locker: 'combination,hallway,metal', textbook: 'chapter,heavy,pages', principal: 'office,boss,strict', notebook: 'spiral,pages,pencil', calculator: 'numbers,buttons,math',
+  guitar: 'strings,strum,frets', drums: 'sticks,beat,cymbal', piano: 'keys,grand,ivory', violin: 'bow,fiddle,strings', trumpet: 'brass,valves,jazz',
+  concert: 'stage,crowd,tickets', microphone: 'sing,speak,stand', orchestra: 'conductor,symphony,sections', saxophone: 'reed,jazz,brass', headphones: 'ears,wires,listen',
+  tornado: 'twister,funnel,spin', rainbow: 'colors,arc,after-rain', blizzard: 'snowstorm,whiteout,freezing', thunder: 'boom,rumble,storm', drought: 'dry,water,months',
+  fog: 'misty,low,gray', hurricane: 'eye,coast,category', snowflake: 'crystal,unique,winter', lightning: 'bolt,flash,strike', heatwave: 'scorching,summer,sweat',
+  fireworks: 'sparkle,sky,July', snowman: 'carrot,Frosty,coal', turkey: 'gobble,November,stuffing', 'candy cane': 'striped,peppermint,hook', confetti: 'party,paper,shower',
+  costume: 'dress-up,October,mask', mistletoe: 'kiss,hanging,plant', 'pumpkin pie': 'dessert,spice,Thanksgiving', 'gift wrap': 'ribbon,paper,present', 'new year': 'midnight,countdown,resolution',
   teleporting: 'instant,poof,beam', 'mind control': 'puppet,brain,command', 'x-ray vision': 'bones,Superman,see-through', shapeshifting: 'morph,change,form', healing: 'cure,recover,mend',
 };
 const GENERIC = {
@@ -58,6 +73,8 @@ const GENERIC = {
   'Jobs': 'career,work,uniform,training,skilled,paid', 'At the Beach': 'sand,summer,sun,ocean,holiday,coast', 'Sports': 'team,match,compete,score,athlete,trophy',
   'In the Kitchen': 'cooking,counter,metal,handy,useful,clean', 'Space': 'universe,distant,cosmic,dark,huge,science', 'Fairy Tales': 'story,magic,once,legend,fantasy,enchanted',
   'Superpowers': 'hero,mutant,comic,special,gift,amazing',
+  'Landmarks': 'famous,tourist,travel,monument,historic,visit', 'School': 'class,student,learn,teacher,bell,study', 'Music': 'sound,band,notes,rhythm,play,melody',
+  'Weather': 'sky,forecast,outdoors,climate,season,nature', 'Holidays': 'celebrate,family,festive,tradition,decorations,seasonal',
 };
 const FILLER_SHORT = 'big,old,cool,fun,nice,rare,true,odd'.split(',');
 const FILLER_LONG = 'interesting,mysterious,familiar,popular,fantastic,incredible,remarkable,wonderful'.split(',');
@@ -113,7 +130,8 @@ function stateFor(room, p) {
     options: room.phase === 'guess' && isMole ? room.options : null,
     guessing: room.phase === 'guess',
     result: room.phase === 'result' ? room.result : null,
-    players: [...room.players.values()].map(q => ({ id: q.id, name: q.name, color: q.color, score: q.score, bot: !!q.bot, away: !!q.away })),
+    clueMs: clueMs(room), settings: room.settings, allCats: catNames(room),
+    players: [...room.players.values()].map(q => ({ id: q.id, name: q.name, color: q.color, score: q.score, bot: !!q.bot, away: !!q.away, det: q.det || 0, bluff: q.bluff || 0 })),
     final: room.phase === 'over',
   };
 }
@@ -188,10 +206,16 @@ const arm = (room, ms, fn) => { clearTimeout(room.timer); room.deadline = Date.n
 function startGame(room) {
   room.players.forEach(p => { p.score = 0; });
   room.queue = shuffle([...room.players.keys()]);
-  room.totalRounds = Math.min(room.players.size, 6);
+  room.totalRounds = room.settings.rounds || Math.min(room.players.size, 6);
   room.roundNo = 0;
+  room.usedWords = new Set();
+  room.players.forEach(p => { p.det = 0; p.bluff = 0; });
   nextRound(room);
 }
+
+const catNames = room => [...Object.keys(BANK), ...(room.settings.custom ? [room.settings.custom.name] : [])];
+const wordsOf = (room, cat) => (room.settings.custom && cat === room.settings.custom.name ? room.settings.custom.words : BANK[cat]);
+const clueMs = room => room.settings.clueSec * 1000;
 
 function nextRound(room) {
   clearTimeout(room.timer);
@@ -201,10 +225,16 @@ function nextRound(room) {
   let moleId = room.queue[(room.roundNo - 1) % room.queue.length];
   if (!room.players.has(moleId)) moleId = shuffle([...room.players.keys()])[0];
   room.moleId = moleId;
-  const cats = Object.keys(BANK);
-  room.category = cats[Math.floor(Math.random() * cats.length)];
-  const words = BANK[room.category];
-  room.word = words[Math.floor(Math.random() * words.length)];
+  const enabled = catNames(room).filter(c => !room.settings.cats.length || room.settings.cats.includes(c));
+  const cats = enabled.length ? enabled : catNames(room);
+  const fresh = cats.filter(c => wordsOf(room, c).some(w => !room.usedWords.has(w)));
+  const pickFrom = fresh.length ? fresh : cats;
+  room.category = pickFrom[Math.floor(Math.random() * pickFrom.length)];
+  const words = wordsOf(room, room.category);
+  const unused = words.filter(w => !room.usedWords.has(w));
+  const bag = unused.length ? unused : words;
+  room.word = bag[Math.floor(Math.random() * bag.length)];
+  room.usedWords.add(room.word);
   room.options = shuffle([room.word, ...shuffle(words.filter(w => w !== room.word)).slice(0, 5)]);
   room.order = shuffle([...room.players.keys()]);
   room.turn = 0; room.clues = []; room.votes = new Map(); room.stakes = new Set(); room.ready = new Set(); room.result = null; room.botDone = new Set();
@@ -212,7 +242,7 @@ function nextRound(room) {
   room.opName = `Operation ${OP_A[Math.floor(Math.random() * OP_A.length)]} ${OP_B[Math.floor(Math.random() * OP_B.length)]}`;
   room.caseNo = 1000 + Math.floor(Math.random() * 9000);
   room.phase = 'clue';
-  arm(room, CLUE_MS, () => submitClue(room, null, '—'));
+  arm(room, clueMs(room), () => submitClue(room, null, '—'));
   broadcast(room);
   sys(room, `Round ${room.roundNo}: category is ${room.category}. One of you is the mole!`, 'reveal');
 }
@@ -229,7 +259,7 @@ function submitClue(room, pid, text) {
     room.turn++;
   }
   if (room.turn >= room.order.length * 2) return startDiscuss(room);
-  arm(room, CLUE_MS, () => submitClue(room, null, '—'));
+  arm(room, clueMs(room), () => submitClue(room, null, '—'));
   broadcast(room);
 }
 
@@ -276,8 +306,11 @@ function resolve(room, guess) {
     else { outcome = 'caught'; room.players.forEach(p => { if (p.id !== room.moleId) gain[p.id] += 2; }); }
   }
   // every vote is a personal bet: +1 for naming the mole, and a staked vote is worth +2 if right, -1 if wrong
+  const moleP = room.players.get(room.moleId);
+  if (moleP && (outcome === 'escaped' || outcome === 'steal')) moleP.bluff = (moleP.bluff || 0) + 1;
   room.votes.forEach((target, voter) => {
     if (!gain.hasOwnProperty(voter)) return;
+    if (target === room.moleId && room.players.get(voter)) room.players.get(voter).det = (room.players.get(voter).det || 0) + 1;
     const staked = room.stakes.has(voter);
     if (target === room.moleId) gain[voter] += staked ? 2 : 1;
     else if (staked) gain[voter] -= 1;
@@ -311,7 +344,7 @@ wss.on('connection', ws => {
       let t;
       if (m.type === 'create') {
         t = { code: makeCode(), players: new Map(), hostId: null, phase: 'lobby', queue: [], roundNo: 0, totalRounds: 0, moleId: null,
-              category: '', word: '', options: [], order: [], turn: 0, clues: [], votes: new Map(), stakes: new Set(), mod: MODS[0], opName: '', caseNo: 0, ready: new Set(), result: null, timer: null, deadline: 0, botDone: new Set() };
+              category: '', word: '', options: [], order: [], turn: 0, clues: [], votes: new Map(), stakes: new Set(), mod: MODS[0], opName: '', caseNo: 0, ready: new Set(), result: null, timer: null, deadline: 0, botDone: new Set(), usedWords: new Set(), settings: { rounds: 0, clueSec: 25, cats: [], custom: null } };
         rooms.set(t.code, t);
       } else {
         t = rooms.get(String(m.code || '').toUpperCase().trim());
@@ -346,6 +379,31 @@ wss.on('connection', ws => {
     if (!room || !player) return;
 
     switch (m.type) {
+      case 'settings':
+        if (player.id === room.hostId && room.phase === 'lobby') {
+          const s = room.settings, v = m.settings || {};
+          if ([0, 2, 3, 4, 5, 6].includes(+v.rounds)) s.rounds = +v.rounds;
+          if ([15, 25, 40].includes(+v.clueSec)) s.clueSec = +v.clueSec;
+          if (Array.isArray(v.cats)) s.cats = v.cats.map(String).filter(c => catNames(room).includes(c)).slice(0, 30);
+          if (v.custom === null) { s.custom = null; s.cats = s.cats.filter(c => Object.keys(BANK).includes(c)); }
+          else if (v.custom && typeof v.custom === 'object') {
+            const name = String(v.custom.name || '').trim().slice(0, 20);
+            const words = [...new Set(String(v.custom.words || '').split(/[,\n]/).map(w => w.trim().slice(0, 24)).filter(Boolean))].slice(0, 30);
+            if (name && words.length >= 6 && !Object.keys(BANK).includes(name)) { s.custom = { name, words }; if (s.cats.length && !s.cats.includes(name)) s.cats.push(name); }
+            else send(player, { type: 'chat', system: true, text: 'A custom category needs a name and at least 6 comma-separated words.', cls: 'close' });
+          }
+          broadcast(room);
+        }
+        break;
+      case 'rematch':
+        if (player.id === room.hostId && room.phase === 'over' && room.players.size >= MIN_PLAYERS) startGame(room);
+        break;
+      case 'react':
+        if (['lobby', 'discuss', 'vote', 'result', 'over'].includes(room.phase) && ['👀', '🤔', '😂', '😱', '🔥', '👏', '🕵️', '🎭'].includes(m.emoji) && Date.now() - (player.lastReact || 0) > 350) {
+          player.lastReact = Date.now();
+          sendAll(room, { type: 'react', emoji: m.emoji, color: player.color, name: player.name });
+        }
+        break;
       case 'practice':
         if (player.id === room.hostId && room.phase === 'lobby') {
           while (room.players.size < 4) addBot(room);
