@@ -288,7 +288,7 @@
       <div class="plate" id="bigcode"></div>
       <div class="small" id="origin"></div>
       <div class="badges" id="lobbyplayers"></div>
-      <div class="sharerow"><button class="btn brass sm" id="share">📤 SHARE INVITE LINK</button><div id="qr"></div></div>
+      <div class="sharerow"><button class="btn sm" id="copycode">📋 COPY CODE</button><button class="btn brass sm" id="share">📤 SHARE INVITE LINK</button><div id="qr"></div></div>
     </div>
     <div class="paper" id="settingsbox">
       <h3>GAME SETTINGS <span class="small" id="sethint" style="font-family:var(--type);letter-spacing:0"></span></h3>
@@ -461,6 +461,11 @@ function floatEmoji(m) {
   d.innerHTML = `${esc(m.emoji)}<small>${esc(m.name || '')}</small>`; document.body.appendChild(d); setTimeout(() => d.remove(), 2300);
 }
 document.querySelectorAll('#reactbar button').forEach(b => b.onclick = () => { out({ type: 'react', emoji: b.textContent }); if (!ws || ws.readyState !== 1) floatEmoji({ emoji: b.textContent, name: 'you' }); });
+$('copycode').onclick = async () => {
+  if (!S) return;
+  try { await navigator.clipboard.writeText(S.code); } catch { const t = document.createElement('textarea'); t.value = S.code; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch {} t.remove(); }
+  toast(`Code ${S.code} copied!`);
+};
 $('share').onclick = async () => {
   if (!S) return; const url = `${location.origin}/?room=${S.code}`;
   try { if (navigator.share) { await navigator.share({ title: 'Mole Hunt', text: `Join my Mole Hunt game! Room code ${S.code}`, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
