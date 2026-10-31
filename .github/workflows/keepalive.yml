@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping the game server so the free instance stays awake
-        run: curl -fsS --max-time 90 https://mole-hunt-gp0y.onrender.com/healthz
+        run: curl -fsS --max-time 90 https://molehunt-game.onrender.com/healthz
